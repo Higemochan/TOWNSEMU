@@ -1,6 +1,10 @@
 set(TARGET_NAME fssimplewindow_connection)
 
-add_library(${TARGET_NAME} fssimplewindow_connection.h fssimplewindow_connection.cpp)
+set(SRCS
+	fssimplewindow_connection.h fssimplewindow_connection.cpp
+	inprocess_filedialog.h inprocess_filedialog.cpp)
+
+add_library(${TARGET_NAME} ${SRCS})
 target_link_libraries(${TARGET_NAME} outside_world fssimplewindow yssimplesound cpputil ysgamepad)
 target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

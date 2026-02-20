@@ -38,6 +38,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "icons.h"
 #include "ysgamepad.h"
 #include "townsparam.h"
+#ifdef __APPLE__
+#define STATUS_LAMP_X_OFFSET 16
+#else
+#define STATUS_LAMP_X_OFFSET 0
+#endif
 
 #ifndef TSUGARU_I486_HIGH_FIDELITY
 #define WINDOW_TITLE "FM Towns Emulator - TSUGARU"
@@ -1668,14 +1673,14 @@ void FsSimpleWindowConnection::WindowConnection::Start(void)
 	UpdateTexture(menuIconTexId,MENU_wid,MENU_hei,MENUicon.data());
 
 	// Make initial status bitmap
-	Put16x16Invert(0,15,CD_IDLE);
+	Put16x16Invert(STATUS_LAMP_X_OFFSET+0,15,CD_IDLE);
 	for(int fd=0; fd<2; ++fd)
 	{
-		Put16x16Invert(16+16*fd,15,FD_IDLE);
+		Put16x16Invert(STATUS_LAMP_X_OFFSET+16+16*fd,15,FD_IDLE);
 	}
 	for(int hdd=0; hdd<6; ++hdd)
 	{
-		Put16x16Invert(48+16*hdd,15,HDD_IDLE);
+		Put16x16Invert(STATUS_LAMP_X_OFFSET+48+16*hdd,15,HDD_IDLE);
 	}
 
 
@@ -1745,6 +1750,70 @@ void FsSimpleWindowConnection::WindowConnection::Interval(void)
 
 		winThrEx.primary.mouseMoveXY[0]+=diffXY[0];
 		winThrEx.primary.mouseMoveXY[1]+=diffXY[1];
+	}
+
+	// In-process file dialog: intercept input while active
+	if(winThrEx.fileDialog.active)
+	{
+		int wWid,wHei;
+		FsGetWindowSize(wWid,wHei);
+		for(auto &mos : winThrEx.primary.mouseEvents)
+		{
+			winThrEx.fileDialog.HandleMouseClick(mos.evt,mos.mx,mos.my,wWid,wHei);
+		}
+		for(auto code : winThrEx.primary.keyCode)
+		{
+			winThrEx.fileDialog.HandleKey(code);
+		}
+		// Check if dialog completed with a selection
+		if(!winThrEx.fileDialog.active)
+		{
+			auto path=winThrEx.fileDialog.GetSelectedPath();
+			if(!path.empty())
+			{
+				std::string cmd;
+				switch(winThrEx.fileDialog.driveType)
+				{
+				case 0: cmd="CDLOAD \""+path+"\""; break;
+				case 1: cmd="FD0LOAD \""+path+"\""; break;
+				case 2: cmd="FD1LOAD \""+path+"\""; break;
+				}
+				std::lock_guard<std::mutex> lock(deviceStateLock);
+				sharedEx.pendingFileLoadCommand=cmd;
+			}
+		}
+		// Consume all input so emulator doesn't receive it
+		winThrEx.primary.mouseEvents.clear();
+		winThrEx.primary.keyCode.clear();
+		winThrEx.primary.charCode.clear();
+	}
+	else
+	{
+		// Right-click on status bar lamp -> open file dialog for disk swap
+		for(auto &mos : winThrEx.primary.mouseEvents)
+		{
+			if(FSMOUSEEVENT_RBUTTONDOWN==mos.evt)
+			{
+				int wWid,wHei;
+				FsGetWindowSize(wWid,wHei);
+				if(mos.my>=wHei-STATUS_HEI)
+				{
+					int lampX=mos.mx-STATUS_LAMP_X_OFFSET;
+					if(0<=lampX && lampX<16)
+					{
+						OpenFileDialogForDrive(0); // CD
+					}
+					else if(16<=lampX && lampX<32)
+					{
+						OpenFileDialogForDrive(1); // FD0
+					}
+					else if(32<=lampX && lampX<48)
+					{
+						OpenFileDialogForDrive(2); // FD1
+					}
+				}
+			}
+		}
 	}
 
 	PollGamePads();
@@ -1900,6 +1969,16 @@ void FsSimpleWindowConnection::WindowConnection::Render(bool swapBuffers)
 	glBindTexture(GL_TEXTURE_2D,mainTexId);
 	DrawTextureRect(dx,dy+imgHei*scalingY/100,dx+imgWid*scalingX/100,dy);
 
+	// In-process file dialog overlay
+	if(winThrEx.fileDialog.active)
+	{
+		winThrEx.fileDialog.Render(winWid,winHei);
+		// Restore OpenGL state for subsequent rendering
+		glEnable(GL_TEXTURE_2D);
+		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+		glColor3f(1,1,1);
+	}
+
 	FsSetMouseCursorHideRect(dx,dy,dx+imgWid*scalingX/100,dy+imgHei*scalingY/100);
 
 	glDisable(GL_TEXTURE_2D);
@@ -2008,6 +2087,12 @@ void FsSimpleWindowConnection::WindowConnection::Communicate(Outside_World *ow)
 		shared.differentialMouseIntegration=outside_world->differentialMouseIntegration;
 
 		outside_world->closeWindow=closeWindow;
+
+		if(!sharedEx.pendingFileLoadCommand.empty())
+		{
+			outside_world->commandQueue.push(sharedEx.pendingFileLoadCommand);
+			sharedEx.pendingFileLoadCommand.clear();
+		}
 	}
 	{
 		std::lock_guard<std::mutex> lock(renderingLock);
@@ -2046,25 +2131,30 @@ void FsSimpleWindowConnection::WindowConnection::PollGamePads(void)
 	}
 }
 
+void FsSimpleWindowConnection::WindowConnection::OpenFileDialogForDrive(int driveType)
+{
+	winThrEx.fileDialog.Open(driveType);
+}
+
 void FsSimpleWindowConnection::WindowConnection::UpdateStatusBitmap(void)
 {
 	// Update Status Bitmap
 	if(winThrEx.prevStatusBarInfo.cdAccessLamp!=sharedEx.statusBarInfo.cdAccessLamp)
 	{
-		Put16x16SelectInvert(0,15,CD_IDLE,CD_BUSY,sharedEx.statusBarInfo.cdAccessLamp);
+		Put16x16SelectInvert(STATUS_LAMP_X_OFFSET+0,15,CD_IDLE,CD_BUSY,sharedEx.statusBarInfo.cdAccessLamp);
 	}
 	for(int fd=0; fd<2; ++fd)
 	{
 		if(winThrEx.prevStatusBarInfo.fdAccessLamp[fd]!=sharedEx.statusBarInfo.fdAccessLamp[fd])
 		{
-			Put16x16SelectInvert(16+16*fd,15,FD_IDLE,FD_BUSY,sharedEx.statusBarInfo.fdAccessLamp[fd]);
+			Put16x16SelectInvert(STATUS_LAMP_X_OFFSET+16+16*fd,15,FD_IDLE,FD_BUSY,sharedEx.statusBarInfo.fdAccessLamp[fd]);
 		}
 	}
 	for(int hdd=0; hdd<6; ++hdd)
 	{
 		if(winThrEx.prevStatusBarInfo.scsiAccessLamp[hdd]!=sharedEx.statusBarInfo.scsiAccessLamp[hdd])
 		{
-			Put16x16SelectInvert(48+16*hdd,15,HDD_IDLE,HDD_BUSY,sharedEx.statusBarInfo.scsiAccessLamp[hdd]);
+			Put16x16SelectInvert(STATUS_LAMP_X_OFFSET+48+16*hdd,15,HDD_IDLE,HDD_BUSY,sharedEx.statusBarInfo.scsiAccessLamp[hdd]);
 		}
 	}
 

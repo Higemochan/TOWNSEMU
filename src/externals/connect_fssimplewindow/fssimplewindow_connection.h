@@ -39,8 +39,10 @@ So, my best decision is to use streaming mode in macOS, which should work perfec
 #include "ysgamepad.h"
 #include "fssimplewindow.h"
 #include <vector>
+#include <string>
 #include <thread>
 #include <mutex>
+#include "inprocess_filedialog.h"
 
 class FsSimpleWindowConnection : public Outside_World
 {
@@ -145,6 +147,7 @@ public:
 		public:
 			// Locked by deviceStateLock >>
 			DeviceAndEvent readyToSend;
+			std::string pendingFileLoadCommand;  // Window thread -> VM thread
 
 			// Locked by renderingLock >>
 			StatusBarInfo statusBarInfo;
@@ -156,6 +159,7 @@ public:
 			StatusBarInfo statusBarInfo,prevStatusBarInfo;
 			bool gamePadInitialized=false;
 			unsigned int sinceLastResize=0;
+			InProcessFileDialog fileDialog;
 		};
 		class VMThreadVariables
 		{
@@ -185,6 +189,7 @@ public:
 		void Communicate(Outside_World *) override;
 
 		void PollGamePads(void);
+		void OpenFileDialogForDrive(int driveType);
 
 		// Called when window-close button is clicked.
 		static bool CloseWindowCallBack(void *thisPtr)
