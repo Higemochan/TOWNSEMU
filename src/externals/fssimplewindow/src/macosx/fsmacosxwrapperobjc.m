@@ -655,6 +655,8 @@ static NSRect restoreRect={0,0,800,600};
 
 
 
+static BOOL fsCursorIsHidden=NO;
+
 static bool isTextViewOpen=false;
 static YsOpenGLWindow *ysWnd=nil;
 static YsOpenGLView *ysView=nil;
@@ -1649,8 +1651,25 @@ void FsPollDeviceC(void)
 
 	FsMakeCurrentC();
 
+	if(nil!=ysView && nil!=ysWnd)
+	{
+		NSPoint loc=[NSEvent mouseLocation];
+		NSRect wndFrame=[ysWnd frame];
+		BOOL mouseInWindow=NSPointInRect(loc, wndFrame);
+		if(mouseInWindow && NO==fsCursorIsHidden)
+		{
+			[NSCursor hide];
+			fsCursorIsHidden=YES;
+		}
+		else if(!mouseInWindow && YES==fsCursorIsHidden)
+		{
+			[NSCursor unhide];
+			fsCursorIsHidden=NO;
+		}
+	}
+
 #if !__has_feature(objc_arc)
-	[pool release];	
+	[pool release];
 #endif
 }
 
