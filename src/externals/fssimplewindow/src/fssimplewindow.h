@@ -435,6 +435,7 @@ int FsGetMouseEvent(int &lb,int &mb,int &rb,int &mx,int &my);
     May not work in Linux.
 */
 void FsSetMousePosition(int mx,int my);
+void FsGetRawMouseDelta(double &dx,double &dy);
 void FsSwapBuffers(void);
 int FsInkey(void);
 int FsInkeyChar(void);

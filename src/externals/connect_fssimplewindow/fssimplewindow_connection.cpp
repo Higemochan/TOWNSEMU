@@ -1841,8 +1841,15 @@ void FsSimpleWindowConnection::WindowConnection::Interval(void)
 			sharedEx.readyToSend=winThrEx.primary;
 			winThrEx.primary.CleanUpEvents();
 
+			double rawDx,rawDy;
+			FsGetRawMouseDelta(rawDx,rawDy);
 			if(true==shared.differentialMouseIntegration)
 			{
+				// Use raw NSEvent delta instead of position-based delta.
+				// CGWarpMouseCursorPosition breaks position-based tracking on macOS.
+				sharedEx.readyToSend.mouseMoveXY[0]=(int)rawDx;
+				sharedEx.readyToSend.mouseMoveXY[1]=(int)rawDy;
+
 				int mx=winThrEx.primary.winWid/2;
 				int my=winThrEx.primary.winHei/2;
 				winThrEx.primary.lastKnownMouse.mx=mx;

@@ -625,6 +625,9 @@ static int charBuffer[NKEYBUF];
 static int nMosBufUsed=0;
 static struct FsMouseEventLog mosBuffer[NKEYBUF];
 
+static double rawMouseDeltaX=0.0;
+static double rawMouseDeltaY=0.0;
+
 static int exposure=0;
 
 static bool maximizedOrFullScreen=false;
@@ -1012,6 +1015,9 @@ static YsMacDelegate *ysDelegate=nil;
 - (void) mouseMoved:(NSEvent *)theEvent
 {
 	NSPoint mosPos=[self convertPoint:[theEvent locationInWindow] fromView:nil];
+
+	rawMouseDeltaX+=[theEvent deltaX];
+	rawMouseDeltaY+=[theEvent deltaY];
 
 	if(0<nMosBufUsed &&
 	   FSMOUSEEVENT_MOVE==mosBuffer[nMosBufUsed-1].eventType)
@@ -1824,6 +1830,14 @@ void FsSetMousePositionC(int mx,int my)
 
 		CGWarpMouseCursorPosition(newPos);
 	}
+}
+
+void FsGetRawMouseDeltaC(double *dx,double *dy)
+{
+	*dx=rawMouseDeltaX;
+	*dy=rawMouseDeltaY;
+	rawMouseDeltaX=0.0;
+	rawMouseDeltaY=0.0;
 }
 
 int FsGetMouseEventC(int *lb,int *mb,int *rb,int *mx,int *my)
