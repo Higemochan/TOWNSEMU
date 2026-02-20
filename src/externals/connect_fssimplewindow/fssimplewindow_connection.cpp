@@ -1900,6 +1900,8 @@ void FsSimpleWindowConnection::WindowConnection::Render(bool swapBuffers)
 	glBindTexture(GL_TEXTURE_2D,mainTexId);
 	DrawTextureRect(dx,dy+imgHei*scalingY/100,dx+imgWid*scalingX/100,dy);
 
+	FsSetMouseCursorHideRect(dx,dy,dx+imgWid*scalingX/100,dy+imgHei*scalingY/100);
+
 	glDisable(GL_TEXTURE_2D);
 
 	if(true==strikeCommanderSpecial)

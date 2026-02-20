@@ -62,6 +62,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void FsPollDeviceC(void);
 void FsMakeCurrentC(void);
+void FsSetMouseCursorHideRectC(int x0,int y0,int x1,int y1);
 extern void FsOnPaintCallBackCpp(void);
 extern void FsOnInitializeOpenGLC(void);
 extern int FsOnCloseButton(void);
@@ -656,6 +657,8 @@ static NSRect restoreRect={0,0,800,600};
 
 
 static BOOL fsCursorIsHidden=NO;
+static BOOL fsCursorHideRectIsSet=NO;
+static int fsCursorHideX0=0, fsCursorHideY0=0, fsCursorHideX1=0, fsCursorHideY1=0;
 
 static bool isTextViewOpen=false;
 static YsOpenGLWindow *ysWnd=nil;
@@ -1654,14 +1657,30 @@ void FsPollDeviceC(void)
 	if(nil!=ysView && nil!=ysWnd)
 	{
 		NSPoint loc=[NSEvent mouseLocation];
-		NSRect wndFrame=[ysWnd frame];
-		BOOL mouseInWindow=NSPointInRect(loc, wndFrame);
-		if(mouseInWindow && NO==fsCursorIsHidden)
+		BOOL shouldHide=NO;
+
+		if(YES==fsCursorHideRectIsSet)
+		{
+			NSPoint winPoint=[ysWnd convertPointFromScreen:loc];
+			NSPoint viewPoint=[ysView convertPoint:winPoint fromView:nil];
+			NSRect viewBounds=[ysView bounds];
+			int mx=(int)viewPoint.x;
+			int my=(int)(viewBounds.size.height-1-viewPoint.y);
+			shouldHide=(mx>=fsCursorHideX0 && mx<fsCursorHideX1 &&
+			            my>=fsCursorHideY0 && my<fsCursorHideY1);
+		}
+		else
+		{
+			NSRect wndFrame=[ysWnd frame];
+			shouldHide=NSPointInRect(loc, wndFrame);
+		}
+
+		if(shouldHide && NO==fsCursorIsHidden)
 		{
 			[NSCursor hide];
 			fsCursorIsHidden=YES;
 		}
-		else if(!mouseInWindow && YES==fsCursorIsHidden)
+		else if(!shouldHide && YES==fsCursorIsHidden)
 		{
 			[NSCursor unhide];
 			fsCursorIsHidden=NO;
@@ -1671,6 +1690,22 @@ void FsPollDeviceC(void)
 #if !__has_feature(objc_arc)
 	[pool release];
 #endif
+}
+
+void FsSetMouseCursorHideRectC(int x0,int y0,int x1,int y1)
+{
+	if(x0==0 && y0==0 && x1==0 && y1==0)
+	{
+		fsCursorHideRectIsSet=NO;
+	}
+	else
+	{
+		fsCursorHideRectIsSet=YES;
+		fsCursorHideX0=x0;
+		fsCursorHideY0=y0;
+		fsCursorHideX1=x1;
+		fsCursorHideY1=y1;
+	}
 }
 
 void FsMakeCurrentC()

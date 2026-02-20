@@ -419,6 +419,11 @@ void FsSetWindowTitle(const char windowTitle[]);
 void FsShowMouseCursor(int showFlag);
 int FsIsMouseCursorVisible(void);
 
+/*! Set a rectangle (in view coordinates, origin top-left) where the mouse cursor should be hidden.
+    Outside this rectangle (including menu bar, status bar, etc.) the cursor remains visible.
+    Pass all zeros to disable (hide cursor over entire window, original behavior). */
+void FsSetMouseCursorHideRect(int x0,int y0,int x1,int y1);
+
 void FsPollDevice(void);
 void FsSleep(int ms);
 long long int FsPassedTime(void);

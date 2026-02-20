@@ -320,6 +320,12 @@ int FsIsMouseCursorVisible(void)
 {
 	return 1;
 }
+
+extern "C" void FsSetMouseCursorHideRectC(int x0,int y0,int x1,int y1);
+void FsSetMouseCursorHideRect(int x0,int y0,int x1,int y1)
+{
+	FsSetMouseCursorHideRectC(x0,y0,x1,y1);
+}
 int FsOnCloseButton(void)
 {
 	if(nullptr!=fsCloseWindowCallBack)
