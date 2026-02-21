@@ -38,6 +38,7 @@ void FMTownsCommon::State::PowerOn(void)
 	nextFastDevicePollingTime=FAST_DEVICE_POLLING_INTERVAL;
 	currentFreq=FREQUENCY_DEFAULT;
 	fastModeFreq=FREQUENCY_DEFAULT;
+	UpdateRecipFreq();
 	resetReason=0;
 	nextRenderingTime=0;
 }
@@ -186,6 +187,7 @@ void FMTownsCommon::State::PowerOn(void)
 	{
 		towns.state.currentFreq=argv.freq;
 		towns.state.fastModeFreq=argv.freq;
+		towns.state.UpdateRecipFreq();
 	}
 	if(0!=argv.slowModeFreq)
 	{
@@ -497,6 +499,7 @@ void FMTownsCommon::AppSpecificSetup(Outside_World *outside_world,const TownsSta
 		// Faster frequency will cause flickering.
 		// So far 18MHz to 20MHz are the only stable frequencies I found that is stable and prevent flickering.
 		state.currentFreq=20;
+		state.UpdateRecipFreq();
 		var.slowModeFreq=state.currentFreq;
 		state.fastModeFreq=state.currentFreq;
 		cdrom.state.readSectorTime=TOWNS_CD_READ_SECTOR_TIME_1X;
@@ -518,6 +521,7 @@ void FMTownsCommon::AppSpecificSetup(Outside_World *outside_world,const TownsSta
 	case TOWNS_APPSPECIFIC_ROCKETRANGER:
 		// Need to prevent the opening movie ending before the opening music.
 		state.currentFreq=std::min<unsigned int>(5,state.currentFreq);
+		state.UpdateRecipFreq();
 		var.slowModeFreq=state.currentFreq;
 		state.fastModeFreq=state.currentFreq;
 		cdrom.state.readSectorTime=TOWNS_CD_READ_SECTOR_TIME_1X;

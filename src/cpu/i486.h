@@ -164,7 +164,8 @@ public:
 		DESCRIPTOR_TO_INDEX_SHIFT=2, // TI bit will be bit0.
 
 		LINEARADDR_TO_PAGE_SHIFT=12,
-		PAGETABLE_CACHE_SIZE=0x00100000,
+		PAGETABLE_CACHE_BITS=12,
+		PAGETABLE_CACHE_SIZE=(1<<PAGETABLE_CACHE_BITS), // 4096 entries (was 0x100000=1M)
 		PAGEINFO_FLAG_PRESENT=0b000000000001,
 		PAGEINFO_FLAG_RW=     0b000000000010,
 		PAGEINFO_FLAG_US=     0b000000000100,
@@ -796,7 +797,7 @@ public:
 	public:
 		PageTableEntry info;
 		uint32_t valid=0;
-		uint32_t makeIt64Bytes;
+		uint32_t tag=0; // Full page index for tag comparison (was direct-mapped by index)
 	};
 
 	class State
@@ -2900,15 +2901,17 @@ public:
 	    unsigned int &exceptionType,unsigned int &exceptionCode,unsigned int linearAddr,const Memory &mem) const
 	{
 		auto pageIndex=(linearAddr>>LINEARADDR_TO_PAGE_SHIFT);
+		auto cacheIndex=pageIndex&(PAGETABLE_CACHE_SIZE-1);
 
 		PageTableEntry pageInfo;
-		if(state.pageTableCache[pageIndex].valid<state.pageTableCacheValidCounter)
+		if(state.pageTableCache[cacheIndex].valid<state.pageTableCacheValidCounter ||
+		   state.pageTableCache[cacheIndex].tag!=pageIndex)
 		{
 			pageInfo=ReadPageInfo(linearAddr,mem);
 		}
 		else
 		{
-			pageInfo=state.pageTableCache[pageIndex].info;
+			pageInfo=state.pageTableCache[cacheIndex].info;
 		}
 
 		if(0!=(pageInfo.table&PAGEINFO_FLAG_PRESENT))

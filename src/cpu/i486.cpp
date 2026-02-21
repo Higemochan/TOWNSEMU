@@ -342,6 +342,7 @@ void i486DXCommon::ClearPageTableCache(void)
 		c.valid=0;
 		c.info.dir=0;
 		c.info.table=0;
+		c.tag=0;
 	}
 	state.pageTableCacheValidCounter=1;
 }
@@ -973,11 +974,13 @@ void i486DXCommon::PrintPageTranslation(const Memory &mem,uint32_t linearAddr) c
 		std::ostream &ofs=(0==i ? std::cout : debuggerPtr->LogFileStream());
 
 		auto pageIndex=(linearAddr>>LINEARADDR_TO_PAGE_SHIFT);
+		auto cacheIndex=pageIndex&(PAGETABLE_CACHE_SIZE-1);
 
 		ofs << "LINE:" << cpputil::Uitox(linearAddr) << "H" << std::endl;
 
-		auto pageInfo=state.pageTableCache[pageIndex].info;
-		if(state.pageTableCache[pageIndex].valid<state.pageTableCacheValidCounter)
+		auto pageInfo=state.pageTableCache[cacheIndex].info;
+		if(state.pageTableCache[cacheIndex].valid<state.pageTableCacheValidCounter ||
+		   state.pageTableCache[cacheIndex].tag!=pageIndex)
 		{
 			ofs << "Page Info Not Cached" << std::endl;
 		}

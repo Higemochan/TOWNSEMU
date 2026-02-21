@@ -129,17 +129,23 @@ void TownsThread::VMMainLoopTemplate(
 				}
 				while(townsPtr->state.townsTime<townsPtr->var.nextTimeSync)
 				{
+					// Pre-pay time deficit before inner loop to eliminate per-instruction payback overhead.
+					// Original code did min/add/sub every instruction; now done once per inner loop iteration.
+					{
+						auto innerDuration=townsPtr->state.nextFastDevicePollingTime-townsPtr->state.townsTime;
+						if(innerDuration>0)
+						{
+							uint32_t maxPayback=std::min<uint32_t>(timeDeficit,(uint32_t)innerDuration);
+							townsPtr->state.townsTime+=maxPayback;
+							timeDeficit-=maxPayback;
+						}
+					}
 					// With the inner-loop, it saves one 64-bit comparison + conditional jump per instruction for RunFastDevicePolling.
 					while(townsPtr->state.townsTime<=townsPtr->state.nextFastDevicePollingTime &&
-					      0==townsPtr->GetStopFlags()) // Same check, except one timer check
+					      0==townsPtr->GetStopFlags())
 					{
 						townsPtr->RunOneInstruction();
 						townsPtr->pic.ProcessIRQ(townsPtr->CPU(),townsPtr->mem);
-
-						// Need to fast-foward townsTime so that the inner loop will exit not too late for RunFastDevicePolling.
-						uint32_t payBack=std::min<uint32_t>(TIME_DEFICIT_PAYBACK_PER_INSTRUCTION,timeDeficit);
-						townsPtr->state.townsTime+=payBack;
-						timeDeficit-=payBack;
 					}
 
 					townsPtr->RunScheduledTasks();

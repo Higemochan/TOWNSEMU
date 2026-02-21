@@ -830,8 +830,10 @@ inline unsigned long i486DXFidelityLayer<FIDELITY>::LinearAddressToPhysicalAddre
 	FIDELITY fidelity;
 
 	auto pageIndex=(linearAddr>>LINEARADDR_TO_PAGE_SHIFT);
+	auto cacheIndex=pageIndex&(PAGETABLE_CACHE_SIZE-1);
 	PageTableEntry pageInfo;
-	if(state.pageTableCache[pageIndex].valid<state.pageTableCacheValidCounter)
+	if(state.pageTableCache[cacheIndex].valid<state.pageTableCacheValidCounter ||
+	   state.pageTableCache[cacheIndex].tag!=pageIndex)
 	{
 		pageInfo=ReadPageInfo(linearAddr,mem);
 		if(0==(pageInfo.table&PAGEINFO_FLAG_PRESENT))
@@ -849,19 +851,20 @@ inline unsigned long i486DXFidelityLayer<FIDELITY>::LinearAddressToPhysicalAddre
 		{
 			return 0;
 		}
-		state.pageTableCache[pageIndex].info=pageInfo;
-		state.pageTableCache[pageIndex].valid=state.pageTableCacheValidCounter;
+		state.pageTableCache[cacheIndex].info=pageInfo;
+		state.pageTableCache[cacheIndex].valid=state.pageTableCacheValidCounter;
+		state.pageTableCache[cacheIndex].tag=pageIndex;
 	}
 	else
 	{
-		pageInfo=state.pageTableCache[pageIndex].info;
+		pageInfo=state.pageTableCache[cacheIndex].info;
 		if(true==fidelity.PageLevelException(*this,false,linearAddr,pageInfo.dir,pageInfo.table))
 		{
 			return 0;
 		}
 	}
 
-	fidelity.SetPageFlags(*this,state.pageTableCache[pageIndex].info,linearAddr,mem,PAGEINFO_FLAG_A,pageInfo.dir,pageInfo.table);
+	fidelity.SetPageFlags(*this,state.pageTableCache[cacheIndex].info,linearAddr,mem,PAGEINFO_FLAG_A,pageInfo.dir,pageInfo.table);
 
 	auto offset=(linearAddr&4095);
 	auto physicalAddr=(pageInfo.table&0xFFFFF000)+offset;
@@ -874,8 +877,10 @@ inline unsigned long i486DXFidelityLayer<FIDELITY>::LinearAddressToPhysicalAddre
 	FIDELITY fidelity;
 
 	auto pageIndex=(linearAddr>>LINEARADDR_TO_PAGE_SHIFT);
+	auto cacheIndex=pageIndex&(PAGETABLE_CACHE_SIZE-1);
 	PageTableEntry pageInfo;
-	if(state.pageTableCache[pageIndex].valid<state.pageTableCacheValidCounter)
+	if(state.pageTableCache[cacheIndex].valid<state.pageTableCacheValidCounter ||
+	   state.pageTableCache[cacheIndex].tag!=pageIndex)
 	{
 		pageInfo=ReadPageInfo(linearAddr,mem);
 		if(0==(pageInfo.table&PAGEINFO_FLAG_PRESENT))
@@ -893,19 +898,20 @@ inline unsigned long i486DXFidelityLayer<FIDELITY>::LinearAddressToPhysicalAddre
 		{
 			return 0;
 		}
-		state.pageTableCache[pageIndex].info=pageInfo;
-		state.pageTableCache[pageIndex].valid=state.pageTableCacheValidCounter;
+		state.pageTableCache[cacheIndex].info=pageInfo;
+		state.pageTableCache[cacheIndex].valid=state.pageTableCacheValidCounter;
+		state.pageTableCache[cacheIndex].tag=pageIndex;
 	}
 	else
 	{
-		pageInfo=state.pageTableCache[pageIndex].info;
+		pageInfo=state.pageTableCache[cacheIndex].info;
 		if(true==fidelity.PageLevelException(*this,true,linearAddr,pageInfo.dir,pageInfo.table))
 		{
 			return 0;
 		}
 	}
 
-	fidelity.SetPageFlags(*this,state.pageTableCache[pageIndex].info,linearAddr,mem,PAGEINFO_FLAG_A|PAGEINFO_FLAG_D,pageInfo.dir,pageInfo.table);
+	fidelity.SetPageFlags(*this,state.pageTableCache[cacheIndex].info,linearAddr,mem,PAGEINFO_FLAG_A|PAGEINFO_FLAG_D,pageInfo.dir,pageInfo.table);
 
 	auto offset=(linearAddr&4095);
 	auto physicalAddr=(pageInfo.table&0xFFFFF000)+offset;

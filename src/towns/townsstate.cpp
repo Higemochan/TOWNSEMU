@@ -302,6 +302,7 @@ void FMTownsCommon::LoadStatePostProcess(void)
 	state.nextSecondInTownsTime=ReadInt64(data);
 	state.clockBalance=ReadInt64(data);
 	state.currentFreq=ReadInt64(data);
+	state.UpdateRecipFreq();
 	state.resetReason=ReadUint32(data);
 	state.serialROMBitCount=ReadUint32(data);
 	state.lastSerialROMCommand=ReadUint32(data);

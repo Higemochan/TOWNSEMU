@@ -155,6 +155,18 @@ public:
 		long long int currentFreq;
 		long long int fastModeFreq;
 
+		/*! Precomputed reciprocal of currentFreq for avoiding integer division.
+		    recipFreq = ceil(2^32 / currentFreq).
+		    Usage: q = (uint32_t)((uint64_t)clockBalance * recipFreq >> 32);
+		           r = clockBalance - q * currentFreq;
+		           if(r >= currentFreq) { q++; r -= currentFreq; }
+		*/
+		uint64_t recipFreq=0;
+		inline void UpdateRecipFreq(void)
+		{
+			recipFreq=((1ULL<<32)+currentFreq-1)/currentFreq;
+		}
+
 
 		/*!
 		*/
@@ -999,14 +1011,19 @@ public:
 		auto clocksPassed=_cpu.RunOneInstruction(mem,io);
 		state.clockBalance+=clocksPassed*1000;
 
-		// Since last update, clockBalance*1000/freq nano seconds have passed.
-		// Eg.  66MHz ->  66 clocks passed means 1 micro second.
-		//                clockBalance is 66000.
-		//                clockBalance/freq=1000.  1000 nano seconds.
+		// Convert clockBalance to nanoseconds using precomputed reciprocal multiplication
+		// instead of integer division.  recipFreq = ceil(2^32 / currentFreq).
+		// This replaces: passedInNanoSec = clockBalance / FREQ; clockBalance %= FREQ;
 		auto FREQ=state.currentFreq;
-		auto passedInNanoSec=(state.clockBalance/FREQ);
+		uint32_t passedInNanoSec=(uint32_t)(((uint64_t)state.clockBalance*state.recipFreq)>>32);
+		uint32_t remainder=(uint32_t)(state.clockBalance-passedInNanoSec*FREQ);
+		if(remainder>=(uint32_t)FREQ)
+		{
+			++passedInNanoSec;
+			remainder-=(uint32_t)FREQ;
+		}
 		state.townsTime+=passedInNanoSec;
-		state.clockBalance%=FREQ;
+		state.clockBalance=remainder;
 
 		var.disassemblePointer.SEG=_cpu.state.CS().value;
 		var.disassemblePointer.OFFSET=_cpu.state.EIP;

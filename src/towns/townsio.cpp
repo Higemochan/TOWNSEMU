@@ -360,4 +360,5 @@ void FMTownsCommon::AdjustMachineSpeedForMemoryWait(void)
 		state.currentFreq=var.slowModeFreq;
 		sprite.state.transferTime=TownsSprite::SPRITE_ONE_TRANSFER_TIME;
 	}
+	state.UpdateRecipFreq();
 }

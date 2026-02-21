@@ -6142,7 +6142,11 @@ unsigned int i486DXFidelityLayer<FIDELITY>::RunOneInstruction(Memory &mem,InOut 
 					auto linearAddr=seg.baseLinearAddr+offset; // Tentative.
 
 					auto pageIndex=(linearAddr>>LINEARADDR_TO_PAGE_SHIFT);
-					state.pageTableCache[pageIndex].valid=state.pageTableCacheValidCounter-1;
+					auto cacheIndex=pageIndex&(PAGETABLE_CACHE_SIZE-1);
+					if(state.pageTableCache[cacheIndex].tag==pageIndex)
+					{
+						state.pageTableCache[cacheIndex].valid=state.pageTableCacheValidCounter-1;
+					}
 				}
 				else
 				{
