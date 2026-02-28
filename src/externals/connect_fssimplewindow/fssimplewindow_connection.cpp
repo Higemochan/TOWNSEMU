@@ -2131,6 +2131,14 @@ void FsSimpleWindowConnection::WindowConnection::PollGamePads(void)
 {
 	for(auto padId : winThr.gamePadsNeedUpdate)
 	{
+		if(winThrEx.primary.gamePads.size()<=padId)
+		{
+			auto nGameDevs=YsGamePadGetNumDevices();
+			if(0<nGameDevs)
+			{
+				winThrEx.primary.gamePads.resize(nGameDevs);
+			}
+		}
 		if(padId<winThrEx.primary.gamePads.size())
 		{
 			YsGamePadRead(&winThrEx.primary.gamePads[padId],padId);
